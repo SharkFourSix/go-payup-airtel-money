@@ -66,7 +66,7 @@ func Test(t *testing.T) {
 	wallet, err = gopayup.NewMobileWallet("airtelMoney", dsn)
 	failIfError(t, err)
 
-	transactionID = ""
+	transactionID = "TRANS-ID"
 	ctx, cancelFn := context.WithTimeout(
 		context.Background(),
 		30*time.Second,

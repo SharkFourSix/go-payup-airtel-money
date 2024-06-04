@@ -30,12 +30,13 @@ func Test(t *testing.T) {
 	cfg, err = ini.Load(".ini")
 	failIfError(t, err)
 
-	dsn = cfg.Section("airtel_money").Key("dsn").String()
+	sec := cfg.Section("airtel_money")
+	dsn = sec.Key("dsn").String()
+	transactionID = sec.Key("txn_id").String()
 
 	wallet, err = gopayup.NewMobileWallet("airtelMoney", dsn)
 	failIfError(t, err)
 
-	transactionID = ""
 	ctx, cancelFn := context.WithTimeout(
 		context.Background(),
 		30*time.Second,

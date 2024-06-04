@@ -86,7 +86,7 @@ func newAirtelWallet(dsn string) (pkg.MobileWallet, error) {
 			return nil, errors.Wrapf(err, "invalid timeout value %s", timeoutValue)
 		}
 		wallet.timeout = int(timeout)
-	}else{
+	} else {
 		wallet.timeout = 30 * 1000 // seconds
 	}
 
@@ -139,14 +139,14 @@ func (amw *AirtelMoneyWallet) authenticate() error {
 		return nil
 	}
 
+	postData, _ := json.Marshal(&RequestData{
+		"client_id":      amw.clientID,
+		"client_secret": amw.clientSecret,
+		"grant_type":     "client_credentials",
+	})
+
 	ctx, cancelFunc = context.WithTimeout(context.Background(), time.Duration(amw.timeout)*time.Millisecond)
 	defer cancelFunc()
-
-	postData, _ := json.Marshal(&RequestData{
-		"client_id":  amw.clientID,
-		"secret_key": amw.clientSecret,
-		"grant_type": "",
-	})
 
 	httpRequest, err = http.NewRequestWithContext(ctx, "POST", amw.path("auth/oauth2/token"), bytes.NewReader(postData))
 	if err != nil {
@@ -154,6 +154,8 @@ func (amw *AirtelMoneyWallet) authenticate() error {
 	}
 
 	httpRequest.Header.Add("Accept", "application/json")
+	httpRequest.Header.Add("Accept", "*/*")
+	httpRequest.Header.Add("User-Agent", "go-payup/airtel-extension")
 	httpRequest.Header.Add("Content-Type", "application/json")
 
 	httpResponse, err = http.DefaultClient.Do(httpRequest)
