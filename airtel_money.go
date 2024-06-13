@@ -22,7 +22,7 @@ func init() {
 }
 
 var (
-	apiErrors map[string][]string = map[string][]string{
+	apiErrors = map[string][]string{
 		"DP00800001000": {"Ambiguous", "The transaction is still processing and is in ambiguous state. Please do the transaction enquiry to fetch the transaction status."},
 		"DP00800001001": {"Success", "Transaction is successful."},
 		"DP00800001002": {"Incorrect Pin", "Incorrect pin has been entered."},
@@ -39,7 +39,7 @@ var (
 		"DP00800001029": {"Transaction Expired", "Transaction has been expired."},
 	}
 
-	errorMap map[string]pkg.TransactionStatus = map[string]pkg.TransactionStatus{
+	errorMap = map[string]pkg.TransactionStatus{
 		"TS":  pkg.TS_SUCCESS,
 		"TF":  pkg.TS_FAILED,
 		"TA":  pkg.TS_PENDING, // ambiguous state
@@ -122,7 +122,7 @@ type AirtelMoneyWallet struct {
 	currency     string
 }
 
-func (amw AirtelMoneyWallet) path(p string, other ...string) string {
+func (amw *AirtelMoneyWallet) path(p string, other ...string) string {
 	return amw.endpoint + "/" + p + "/" + strings.Join(other, "/")
 }
 
@@ -140,9 +140,9 @@ func (amw *AirtelMoneyWallet) authenticate() error {
 	}
 
 	postData, _ := json.Marshal(&RequestData{
-		"client_id":      amw.clientID,
+		"client_id":     amw.clientID,
 		"client_secret": amw.clientSecret,
-		"grant_type":     "client_credentials",
+		"grant_type":    "client_credentials",
 	})
 
 	ctx, cancelFunc = context.WithTimeout(context.Background(), time.Duration(amw.timeout)*time.Millisecond)
@@ -154,8 +154,6 @@ func (amw *AirtelMoneyWallet) authenticate() error {
 	}
 
 	httpRequest.Header.Add("Accept", "application/json")
-	httpRequest.Header.Add("Accept", "*/*")
-	httpRequest.Header.Add("User-Agent", "go-payup/airtel-extension")
 	httpRequest.Header.Add("Content-Type", "application/json")
 
 	httpResponse, err = http.DefaultClient.Do(httpRequest)
@@ -184,11 +182,11 @@ func (amw *AirtelMoneyWallet) authenticate() error {
 	return nil
 }
 
-func (amw AirtelMoneyWallet) isAuthenticated() bool {
+func (amw *AirtelMoneyWallet) isAuthenticated() bool {
 	return amw.accessToken.Valid()
 }
 
-func (wallet *AirtelMoneyWallet) VerifyTransaction(ctx context.Context, txnid string) (pkg.Transaction, error) {
+func (amw *AirtelMoneyWallet) VerifyTransaction(ctx context.Context, txnid string) (pkg.Transaction, error) {
 	var (
 		err          error
 		httpRequest  *http.Request
@@ -197,24 +195,24 @@ func (wallet *AirtelMoneyWallet) VerifyTransaction(ctx context.Context, txnid st
 		cancelFunc   context.CancelFunc
 		transaction  TransactionDetails
 	)
-	err = wallet.authenticate()
+	err = amw.authenticate()
 	if err != nil {
 		return nil, err
 	}
 
-	timedCtx, cancelFunc = context.WithTimeout(ctx, time.Duration(wallet.timeout)*time.Millisecond)
+	timedCtx, cancelFunc = context.WithTimeout(ctx, time.Duration(amw.timeout)*time.Millisecond)
 	defer cancelFunc()
 
-	httpRequest, err = http.NewRequestWithContext(timedCtx, "GET", wallet.path("standard/v1/payments", txnid), nil)
+	httpRequest, err = http.NewRequestWithContext(timedCtx, "GET", amw.path("standard/v1/payments", txnid), nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating transaction verification request")
 	}
 
 	httpRequest.Header.Add("Accept", "application/json")
-	httpRequest.Header.Add("X-Country", wallet.country)
-	httpRequest.Header.Add("X-Currency", wallet.currency)
+	httpRequest.Header.Add("X-Country", amw.country)
+	httpRequest.Header.Add("X-Currency", amw.currency)
 	httpRequest.Header.Add("Content-Type", "application/json")
-	httpRequest.Header.Add("Authorization", fmt.Sprintf("Bearer %s", wallet.accessToken.AccessToken))
+	httpRequest.Header.Add("Authorization", fmt.Sprintf("Bearer %s", amw.accessToken.AccessToken))
 
 	httpResponse, err = http.DefaultClient.Do(httpRequest)
 	if err != nil {
@@ -292,6 +290,6 @@ func (d TransactionDetails) Status() pkg.TransactionStatus {
 	return errorMap[d.Data.Transaction.TxnStatus]
 }
 
-func (t TransactionDetails) CreatedAt() *time.Time {
+func (d TransactionDetails) CreatedAt() *time.Time {
 	return nil
 }
